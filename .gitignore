@@ -4,3 +4,6 @@ build/
 # Useless files
 .DS_STORE
 *.swp
+
+# .vscode
+.vscode
