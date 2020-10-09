@@ -300,20 +300,26 @@ namespace CMU462
       dy = -dy;
     }
     int D = (2 * dy) - dx;
-    int y = sy0;
-    for (int x = sx0; x <= sx1; x++)
+    int sy = sy0;
+    for (int sx = sx0; sx <= sx1; sx++)
     {
       if (xy_flip)
       {
-        rasterize_point(y, x, color);
+        render_target[4 * (sy + sx * target_w)] = (uint8_t)(color.r * 255);
+        render_target[4 * (sy + sx * target_w) + 1] = (uint8_t)(color.g * 255);
+        render_target[4 * (sy + sx * target_w) + 2] = (uint8_t)(color.b * 255);
+        render_target[4 * (sy + sx * target_w) + 3] = (uint8_t)(color.a * 255);
       }
       else
       {
-        rasterize_point(x, y, color);
+        render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
+        render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
+        render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
+        render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
       }
       if (D > 0)
       {
-        y += yi;
+        sy += yi;
         D += 2 * (dy - dx);
       }
       else
@@ -323,6 +329,12 @@ namespace CMU462
     }
   }
 
+  inline bool point_in_triangle(float x0, float y0, float x1, float y1, float x2, float y2, float x, float y)
+  {
+    // assume anticlockwise order. input MUST satisfy this condition
+    return ((x1 - x0) * (y - y1) - (x - x1) * (y1 - y0) >= 0) && ((x2 - x1) * (y - y2) - (x - x2) * (y2 - y1) >= 0) && ((x0 - x2) * (y - y0) - (x - x0) * (y0 - y2) >= 0);
+  }
+
   void SoftwareRendererImp::rasterize_triangle(float x0, float y0,
                                                float x1, float y1,
                                                float x2, float y2,
@@ -330,6 +342,32 @@ namespace CMU462
   {
     // Task 3:
     // Implement triangle rasterization
+
+    if ((x1 - x0) * (y2 - y1) - (x2 - x1) * (y1 - y0) < 0)
+    {
+      std::swap(x1, x2);
+      std::swap(y1, y2);
+    } // make sure the order is anticlockwise
+
+    //bounding box for the triangle
+    int x_min = (int) floor(std::min(std::min(x0, x1), x2));
+    int x_max = (int) floor(std::max(std::max(x0, x1), x2));
+    int y_min = (int) floor(std::min(std::min(y0, y1), y2));
+    int y_max = (int) floor(std::max(std::max(y0, y1), y2));
+
+    for (int sx = x_min; sx <= x_max; sx++)
+    {
+      for (int sy = y_min; sy <= y_max; sy++)
+      {
+        if (point_in_triangle(x0, y0, x1, y1, x2, y2, sx + 0.5, sy + 0.5))
+        {
+          render_target[4 * (sx + sy * target_w)] = (uint8_t)(color.r * 255);
+          render_target[4 * (sx + sy * target_w) + 1] = (uint8_t)(color.g * 255);
+          render_target[4 * (sx + sy * target_w) + 2] = (uint8_t)(color.b * 255);
+          render_target[4 * (sx + sy * target_w) + 3] = (uint8_t)(color.a * 255);
+        }
+      }
+    }
   }
 
   void SoftwareRendererImp::rasterize_image(float x0, float y0,
